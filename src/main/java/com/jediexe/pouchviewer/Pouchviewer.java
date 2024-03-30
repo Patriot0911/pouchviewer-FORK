@@ -13,6 +13,7 @@ import net.minecraft.block.Block;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.FontRenderer;
 import net.minecraft.client.gui.Gui;
+import net.minecraft.client.gui.GuiScreen;
 import net.minecraft.client.gui.ScaledResolution;
 import net.minecraft.client.gui.inventory.GuiContainer;
 import net.minecraft.client.renderer.RenderHelper;
@@ -44,21 +45,24 @@ public class Pouchviewer {
 
 	@SubscribeEvent
     public void onTooltipGen(ItemTooltipEvent event) {
+		if(!GuiScreen.isShiftKeyDown())
+			return;
 		if (!Main.showOwned && event.toolTip.toString().contains("Belonged to:")) {
 			int size = event.toolTip.size();
-			int z = size-1;
+			int s = size-1;
 			while (event.toolTip.toString().contains("Belonged to: ")) {
-				event.toolTip.remove(z);
-				z-=1;
+				event.toolTip.remove(s);
+				s-=1;
 			}
 			event.toolTip.remove(event.toolTip.size()-1);
 		}
-		if (!Main.showDyed && event.toolTip.contains("Dyed")) event.toolTip.remove("Dyed");
+		if (!Main.showDyed && event.toolTip.contains("Dyed"))
+			event.toolTip.remove("Dyed");
 		pouchitem=null;
 		if(event.itemStack.hasTagCompound() && event.itemStack.getTagCompound().hasKey("LOTRPouchData")){
 			NBTTagCompound nbt = event.itemStack.getTagCompound().getCompoundTag("LOTRPouchData");
 			NBTTagList items = nbt.getTagList("Items", 10);
-			if(items.tagCount()>0 && event.toolTip!=null){
+			if(items.tagCount()>0 && event.toolTip!=null) {
 				ArrayList<NBTTagCompound> list = new ArrayList<NBTTagCompound>();
 				itemlist = items;
 				count = LOTRItemPouch.getCapacity(event.itemStack);
@@ -75,15 +79,13 @@ public class Pouchviewer {
 				pouch = (LOTRItemPouch)event.itemStack.getItem();
 				pouchitem = event.itemStack;
 				int size = event.toolTip.size();
-				int z = size-1;
-				while (event.toolTip.size()>1){
-					event.toolTip.remove(z);
-					z-=1;
+				int s = size-1;
+				while (s>1){
+					event.toolTip.remove(s);
+					s-=1;
 				}
-				event.toolTip.remove(event.toolTip.size()-1);
 				event.toolTip.add(" ");
 				event.toolTip.add("                                          ");
-				//event.toolTip.add("The Lord of the Rings Mod");
 			}
 		}
 	}
@@ -100,7 +102,9 @@ public class Pouchviewer {
 					if (slot.getStack()!=null) {
 						if (slot.getStack().getItem() instanceof LOTRItemPouch && Minecraft.getMinecraft().thePlayer.inventory.getItemStack()==null && slot.getStack() == pouchitem && pouchitem!=null) {
 							if (slot.getStack()==pouchitem) {
-								draw();
+								Boolean res = draw();
+								if(!res)
+									break;
 								pouchitem=null;
 							}
 						}
@@ -110,7 +114,9 @@ public class Pouchviewer {
 		}
 	}
 	
-	public static void draw() {
+	public static boolean draw() {
+		if(pouchitem == null)
+			return false;
 		ScaledResolution sr = new ScaledResolution(Minecraft.getMinecraft(), Minecraft.getMinecraft().displayWidth, Minecraft.getMinecraft().displayHeight);
 		int sw = sr.getScaledWidth();
 	    int sh = sr.getScaledHeight();
@@ -290,11 +296,13 @@ public class Pouchviewer {
 				}
 			}
 	    }
-	    if (!Main.showDyed) drawText(pouchitem.getDisplayName() + " (" + usedslots + "/" + LOTRItemPouch.getCapacity(pouchitem) + ")", mx+11, my-11);
+	    String name = pouchitem.getDisplayName() != null ? pouchitem.getDisplayName() : "Placeholder";
+	    if (!Main.showDyed) drawText(name + " (" + usedslots + "/" + LOTRItemPouch.getCapacity(pouchitem) + ")", mx+11, my-11);
 		else {
-			if (LOTRItemPouch.isPouchDyed(pouchitem)) drawText(pouchitem.getDisplayName() + " - " + I18n.format("item.lotr.pouch.dyed") + " (" + usedslots + "/" + LOTRItemPouch.getCapacity(pouchitem) + ")", mx+11, my-11);
-			else drawText(pouchitem.getDisplayName() + " (" + usedslots + "/" + LOTRItemPouch.getCapacity(pouchitem) + ")", mx+11, my-11);
+			if (LOTRItemPouch.isPouchDyed(pouchitem)) drawText(name + " - " + I18n.format("item.lotr.pouch.dyed") + " (" + usedslots + "/" + LOTRItemPouch.getCapacity(pouchitem) + ")", mx+11, my-11);
+			else drawText(name + " (" + usedslots + "/" + LOTRItemPouch.getCapacity(pouchitem) + ")", mx+11, my-11);
 		}
+	    return true;
 	}
 	
 	public static void renderItem(final RenderItem ri, final FontRenderer fr, final TextureManager tm, final ItemStack item, final int x, final int y) {
